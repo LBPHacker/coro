@@ -53,7 +53,7 @@ struct context
 	int input;
 };
 
-void *cofunc(void *data)
+static void *cofunc(void *data)
 {
 	struct context *pctx = (struct context *)data;
 	pctx->input *= pctx->input;
@@ -65,7 +65,7 @@ void *cofunc(void *data)
 	return data;
 }
 
-int func(int input)
+static int func(int input)
 {
 	struct context ctx;
 	struct context *pctx = &ctx;
