@@ -3,6 +3,8 @@ project('coro', 'c')
 coro_inc = include_directories('include')
 coro_lib = library('coro', sources: 'lib/coro.c', include_directories: coro_inc)
 
+subdir('include')
+
 coro_dep = declare_dependency(
 	link_with: coro_lib,
 	include_directories: coro_inc,

@@ -1,0 +1,6 @@
+option(
+	'use_thread_local',
+	type: 'boolean',
+	value: false,
+	description: 'Make the global coro state _Thread_local rather than static'
+)

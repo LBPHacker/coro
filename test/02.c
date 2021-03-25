@@ -21,7 +21,9 @@ static void *inc_thrice(void *data)
 		exit(10);
 	}
 	val += 1;
-	if ((intptr_t)coro_getudata(co2) != 7)
+	intptr_t udata;
+	assert(!coro_getudata(co2, (void **)&udata));
+	if (udata != 7)
 	{
 		exit(11);
 	}
@@ -52,7 +54,7 @@ static void *inc_twice(void *data)
 	{
 		exit(5);
 	}
-	if (coro_yield(NULL) != CORO_YIELD_ENULLPD)
+	if (coro_yield(NULL) != CORO_YIELD_ENULLPPASS)
 	{
 		exit(6);
 	}
@@ -77,14 +79,14 @@ static void *inc_twice(void *data)
 
 int main(int argc, const char *argv[])
 {
-	if (coro_running() != NULL)
+	if (coro_running() != coro_toplevel())
 	{
 		exit(1);
 	}
 	assert(!coro_create(&co1, inc_twice, 0x1000U));
 	intptr_t val = 8;
 	assert(!coro_resume(co1, (void **)&val));
-	if (coro_running() != NULL)
+	if (coro_running() != coro_toplevel())
 	{
 		exit(7);
 	}
@@ -92,13 +94,18 @@ int main(int argc, const char *argv[])
 	{
 		exit(8);
 	}
-	if (coro_getudata(co2) != NULL)
+	void *udata;
+	if (coro_getudata(co2, &udata) != CORO_OK)
 	{
 		exit(9);
 	}
+	if (udata != NULL)
+	{
+		exit(21);
+	}
 	coro_setudata(co2, (void *)(intptr_t)7);
 	assert(!coro_resume(co2, (void **)&val));
-	if (coro_running() != NULL)
+	if (coro_running() != coro_toplevel())
 	{
 		exit(12);
 	}
@@ -107,7 +114,7 @@ int main(int argc, const char *argv[])
 		exit(13);
 	}
 	assert(!coro_resume(co1, (void **)&val));
-	if (coro_running() != NULL)
+	if (coro_running() != coro_toplevel())
 	{
 		exit(18);
 	}
@@ -119,6 +126,10 @@ int main(int argc, const char *argv[])
 	if (coro_yield((void **)&val) != CORO_YIELD_ETOPLVL)
 	{
 		exit(20);
+	}
+	if (coro_status(NULL) != CORO_STATUS_ENULLCO)
+	{
+		exit(22);
 	}
 	return 0;
 }

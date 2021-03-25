@@ -6,15 +6,14 @@ Or: _as if we don't have enough things to worry about_
 
 A very simple coroutine library for C (similar to
 [Lua's](https://www.lua.org/manual/5.1/manual.html#2.11), except there's no
-GC involved so you have to clean up after yourself).
+GC involved so you have to clean up after yourself). Currently heavily depends
+on the [getcontext](https://linux.die.net/man/3/getcontext) family of
+functions, which seem to have been phased out of POSIX, very sad.
 
-Currently heavily depends on the
-[getcontext](https://linux.die.net/man/3/getcontext) family of functions, which
-seem to have been phased out of POSIX, very sad.
-
-You'll need a (possibly C11) compiler that supports `_Thread_local`. If you 
-don't plan to use threads though, you can just replace the single occurrence of
-`_Thread_local` with `static` in [coro.c](lib/coro.c).
+This library is not thread-safe, which shouldn't come as a surprise if you're
+trying to use it (seeing as it's a coroutine library). Regardless, you can
+configure (see below) the library to make its global state `_Thread_local`
+rather than `static` if you so wish, and if your compiler supports it.
 
 ## Why (would you do this)?
 
@@ -102,6 +101,16 @@ Build with [Meson](https://mesonbuild.com/) and
 ```sh
 cd coro
 meson build
+cd build
+ninja
+```
+
+If you wish to make the global state thread-local, configure the build site
+with `use_thread_local` set to `true`:
+
+```sh
+cd coro
+meson -Duse_thread_local=true build
 cd build
 ninja
 ```

@@ -16,7 +16,7 @@ static void *nothing(void *data)
 	{
 		exit(14);
 	}
-	if (coro_status(NULL) != CORO_SUSPENDED)
+	if (coro_status(coro_toplevel()) != CORO_NORMAL)
 	{
 		exit(15);
 	}
@@ -29,11 +29,11 @@ static void *nothing(void *data)
 
 int main(int argc, const char *argv[])
 {
-	if (coro_running() != NULL)
+	if (coro_running() != coro_toplevel())
 	{
 		exit(1);
 	}
-	if (coro_create(NULL, NULL, 0x0U) != CORO_CREATE_ENULLCO)
+	if (coro_create(NULL, NULL, 0x0U) != CORO_CREATE_ENULLPCO)
 	{
 		exit(2);
 	}
@@ -49,7 +49,7 @@ int main(int argc, const char *argv[])
 	{
 		exit(5);
 	}
-	if (coro_status(NULL) != CORO_RUNNING)
+	if (coro_status(coro_toplevel()) != CORO_RUNNING)
 	{
 		exit(6);
 	}
@@ -61,7 +61,7 @@ int main(int argc, const char *argv[])
 	{
 		exit(8);
 	}
-	if (coro_resume(co, NULL) != CORO_RESUME_ENULLPD)
+	if (coro_resume(co, NULL) != CORO_RESUME_ENULLPPASS)
 	{
 		exit(9);
 	}
@@ -74,7 +74,7 @@ int main(int argc, const char *argv[])
 	{
 		exit(11);
 	}
-	if (coro_running() != NULL)
+	if (coro_running() != coro_toplevel())
 	{
 		exit(12);
 	}
@@ -82,14 +82,39 @@ int main(int argc, const char *argv[])
 	{
 		exit(17);
 	}
-	if (coro_getudata(NULL) != NULL)
+	if (coro_getudata(NULL, NULL) != CORO_GETUDATA_ENULLCO)
 	{
 		exit(18);
 	}
-	coro_setudata(NULL, (void *)(intptr_t)(8));
-	if ((intptr_t)coro_getudata(NULL) != 8)
+	if (coro_getudata(coro_toplevel(), NULL) != CORO_GETUDATA_ENULLPUD)
+	{
+		exit(22);
+	}
+	intptr_t udata;
+	if (coro_getudata(coro_toplevel(), (void **)&udata) != CORO_OK)
+	{
+		exit(23);
+	}
+	if (udata != 0)
+	{
+		exit(24);
+	}
+	if (coro_setudata(NULL, (void *)udata) != CORO_SETUDATA_ENULLCO)
+	{
+		exit(27);
+	}
+	udata = 8;
+	if (coro_setudata(coro_toplevel(), (void *)udata) != CORO_OK)
+	{
+		exit(26);
+	}
+	if (coro_getudata(coro_toplevel(), (void **)&udata) != CORO_OK)
 	{
 		exit(19);
+	}
+	if (udata != 8)
+	{
+		exit(25);
 	}
 	if (coro_status(co) != CORO_DEAD)
 	{

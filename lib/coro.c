@@ -6,62 +6,80 @@
 
 struct coro
 {
-	void *ud;
-	int st;
-	void **pd;
-	ucontext_t ctx;
-	void *(*fn)(void *);
-	struct coro *yt;
+	void *udata;
+	int status;
+	void **ppass;
+	ucontext_t context;
+	void *(*func)(void *);
+	struct coro *yield_to;
 };
 
-struct tlinfo
+struct global_state
 {
-	struct coro *cur;
-	void *ud;
-	ucontext_t ctx;
+	int init;
+	struct coro *current;
+	struct coro toplevel;
 };
 
-_Thread_local struct tlinfo tli = {
-	.cur = NULL,
-	.ud = NULL,
+#if CORO_USE_THREAD_LOCAL
+_Thread_local
+#else
+static
+#endif
+struct global_state gs = {
+	.init = 0,
 };
 
-struct coro *coro_running()
+static void init_global_state(void)
 {
-	return tli.cur;
+	gs.init = 1;
+	gs.toplevel.udata = NULL;
+	gs.toplevel.status = CORO_RUNNING;
+	gs.toplevel.ppass = NULL;
+	gs.toplevel.func = NULL;
+	gs.toplevel.yield_to = NULL;
+	gs.current = &gs.toplevel;
 }
 
-static ucontext_t *ctx_running()
+struct coro *coro_running(void)
+{
+	if (!gs.init)
+	{
+		init_global_state();
+	}
+	return gs.current;
+}
+
+struct coro *coro_toplevel(void)
+{
+	if (!gs.init)
+	{
+		init_global_state();
+	}
+	return &gs.toplevel;
+}
+
+static void transfer(struct coro *co, int status)
+{
+	co->status = status;
+	assert(!swapcontext(&co->context, &co->yield_to->context));
+}
+
+static void wrap()
 {
 	struct coro *co = coro_running();
-	if (co)
+	void *ret = co->func(*(co->ppass));
+	*(co->ppass) = ret;
+	transfer(co, CORO_DEAD);
+}
+
+int coro_create(struct coro **pco, void *(*func)(void *), size_t stack_size)
+{
+	if (!pco)
 	{
-		return &co->ctx;
+		return CORO_CREATE_ENULLPCO;
 	}
-	return &tli.ctx;
-}
-
-static void yield_to(struct coro *co, int st)
-{
-	co->st = st;
-	assert(!swapcontext(&co->ctx, co->yt ? &co->yt->ctx : &tli.ctx));
-}
-
-static void fn_wrap()
-{
-	struct coro *co = coro_running();
-	void *ret = co->fn(*(co->pd));
-	*(co->pd) = ret;
-	yield_to(co, CORO_DEAD);
-}
-
-int coro_create(struct coro **co, void *(*fn)(void *), size_t stack_size)
-{
-	if (!co)
-	{
-		return CORO_CREATE_ENULLCO;
-	}
-	if (!fn)
+	if (!func)
 	{
 		return CORO_CREATE_ENULLFN;
 	}
@@ -74,25 +92,25 @@ int coro_create(struct coro **co, void *(*fn)(void *), size_t stack_size)
 	{
 		return CORO_CREATE_ENOMEM;
 	}
-	struct coro *ret = malloc(sizeof(struct coro));
-	if (!ret)
+	struct coro *co = malloc(sizeof(struct coro));
+	if (!co)
 	{
 		free(stack);
 		return CORO_CREATE_ENOMEM;
 	}
-	if (getcontext(&ret->ctx))
+	if (getcontext(&co->context))
 	{
-		free(ret);
+		free(co);
 		free(stack);
 		return CORO_CREATE_ESYS;
 	}
-	ret->ud = NULL;
-	ret->st = CORO_SUSPENDED;
-	ret->ctx.uc_stack.ss_sp = stack;
-	ret->ctx.uc_stack.ss_size = stack_size;
-	ret->fn = fn;
-	makecontext(&ret->ctx, fn_wrap, 0);
-	*co = ret;
+	co->udata = NULL;
+	co->status = CORO_SUSPENDED;
+	co->context.uc_stack.ss_sp = stack;
+	co->context.uc_stack.ss_size = stack_size;
+	co->func = func;
+	makecontext(&co->context, wrap, 0);
+	*pco = co;
 	return CORO_OK;
 }
 
@@ -102,58 +120,58 @@ int coro_free(struct coro *co)
 	{
 		return CORO_FREE_ENULLCO;
 	}
-	if (co->st != CORO_DEAD)
+	if (co->status != CORO_DEAD)
 	{
 		return CORO_FREE_ENOTDEAD;
 	}
-	free(co->ctx.uc_stack.ss_sp);
+	free(co->context.uc_stack.ss_sp);
 	free(co);
 	return CORO_OK;
 }
 
-int coro_resume(struct coro *co, void **pd)
+int coro_resume(struct coro *co, void **ppass)
 {
 	if (!co)
 	{
 		return CORO_RESUME_ENULLCO;
 	}
-	if (!pd)
+	if (!ppass)
 	{
-		return CORO_RESUME_ENULLPD;
+		return CORO_RESUME_ENULLPPASS;
 	}
-	if (co->st != CORO_SUSPENDED)
+	if (co->status != CORO_SUSPENDED)
 	{
 		return CORO_RESUME_ENOTSUSP;
 	}
-	co->st = CORO_RUNNING;
-	co->pd = pd;
-	ucontext_t *run = ctx_running();
-	struct coro *yt = tli.cur;
-	co->yt = yt;
-	tli.cur = co;
+	co->status = CORO_RUNNING;
+	co->ppass = ppass;
+	co->yield_to = coro_running();
+	gs.current = co;
+	co->yield_to->status = CORO_NORMAL;
 	int swap_ok = 1;
-	if (swapcontext(run, &co->ctx))
+	if (swapcontext(&co->yield_to->context, &co->context))
 	{
 		swap_ok = 0;
 	}
-	tli.cur = yt;
+	co->yield_to->status = CORO_RUNNING;
+	gs.current = co->yield_to;
 	return swap_ok ? CORO_OK : CORO_RESUME_ESYS;
 }
 
-int coro_yield(void **pd)
+int coro_yield(void **ppass)
 {
-	if (!pd)
+	if (!ppass)
 	{
-		return CORO_YIELD_ENULLPD;
+		return CORO_YIELD_ENULLPPASS;
 	}
 	struct coro *co = coro_running();
-	if (!co)
+	if (co == coro_toplevel())
 	{
 		return CORO_YIELD_ETOPLVL;
 	}
-	*(co->pd) = *pd;
-	yield_to(co, CORO_SUSPENDED);
-	*pd = *(co->pd);
+	*(co->ppass) = *ppass;
+	transfer(co, CORO_SUSPENDED);
+	*ppass = *(co->ppass);
 	return CORO_OK;
 }
 
@@ -161,26 +179,31 @@ int coro_status(struct coro *co)
 {
 	if (!co)
 	{
-		return coro_running() ? CORO_SUSPENDED : CORO_RUNNING;
+		return CORO_STATUS_ENULLCO;
 	}
-	return co->st;
+	return co->status;
 }
 
-void coro_setudata(struct coro *co, void *udata)
+int coro_setudata(struct coro *co, void *udata)
 {
 	if (!co)
 	{
-		tli.ud = udata;
-		return;
+		return CORO_SETUDATA_ENULLCO;
 	}
-	co->ud = udata;
+	co->udata = udata;
+	return CORO_OK;
 }
 
-void *coro_getudata(struct coro *co)
+int coro_getudata(struct coro *co, void **pudata)
 {
 	if (!co)
 	{
-		return tli.ud;
+		return CORO_GETUDATA_ENULLCO;
 	}
-	return co->ud;
+	if (!pudata)
+	{
+		return CORO_GETUDATA_ENULLPUD;
+	}
+	*pudata = co->udata;
+	return CORO_OK;
 }
