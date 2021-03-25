@@ -14,3 +14,7 @@ jobs:
       - run: sudo -H pip install meson ninja
       - run: meson build
       - run: cd build && ninja test
+      - run: cd build && sudo ninja install
+      - run: cd deptest && meson build
+      - run: cd deptest/build && ninja
+      - run: cd deptest/build && ./deptest 1 2 3 4 5

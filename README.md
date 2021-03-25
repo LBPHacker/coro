@@ -39,7 +39,7 @@ Yourself, see the [license](LICENSE.md).
 ## How (would I use this)?
 
 The same way you'd do it in Lua. See [coro.h](include/coro.h) and
-[03.c](test/03.c). But tl;dr:
+[03.c](test/03.c). But [tl;dr](deptest/deptest.c):
 
 ```c
 #include <stdio.h>
@@ -95,14 +95,15 @@ int main(int argc, char *argv[])
 
 ```
 
-Build with [Meson](https://mesonbuild.com/) and
+Build and install with [Meson](https://mesonbuild.com/) and
 [Ninja](https://ninja-build.org/) like so:
 
 ```sh
 cd coro
 meson build
 cd build
-ninja
+ninja test
+sudo ninja install
 ```
 
 If you wish to make the global state thread-local, configure the build site
@@ -112,5 +113,17 @@ with `use_thread_local` set to `true`:
 cd coro
 meson -Duse_thread_local=true build
 cd build
-ninja
+ninja test
+sudo ninja install
+```
+
+The Meson script exports the dependency `coro_dep`. Installing also creates a
+`coro.pc` [pkg-config](https://linux.die.net/man/1/pkg-config) file, which lets
+you link against this dependency with other build systems, and with
+`dependency('coro')` in Meson.
+
+You can uninstall the library with:
+
+```sh
+sudo ninja uninstall
 ```
