@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v2
       - run: sudo -H python -m pip install --upgrade pip
       - run: sudo -H pip install meson ninja
-      - run: meson build
+      - run: meson -Dbuildtype=release -Duse_thread_local=true -Duse_mmap_stack=true build
       - run: cd build && ninja test
       - run: cd build && sudo ninja install
       - run: cd deptest && meson build

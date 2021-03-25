@@ -4,3 +4,9 @@ option(
 	value: false,
 	description: 'Make the global coro state _Thread_local rather than static'
 )
+option(
+	'use_mmap_stack',
+	type: 'boolean',
+	value: false,
+	description: 'Allocate coro stacks with mmap and MAP_GROWSDOWN (Linux) rather than malloc'
+)

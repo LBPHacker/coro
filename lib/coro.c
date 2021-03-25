@@ -4,6 +4,15 @@
 #include <ucontext.h>
 #include <assert.h>
 
+#if CORO_USE_MMAP_STACK
+# include <sys/mman.h>
+# define stackmalloc(a) mmap(NULL, a, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, 0, 0)
+# define stackfree(a) assert(!munmap(a, 1))
+#else
+# define stackmalloc(a) malloc(a)
+# define stackfree(a) free(a)
+#endif
+
 struct coro
 {
 	void *udata;
@@ -59,18 +68,13 @@ struct coro *coro_toplevel(void)
 	return &gs.toplevel;
 }
 
-static void transfer(struct coro *co, int status)
-{
-	co->status = status;
-	assert(!swapcontext(&co->context, &co->yield_to->context));
-}
-
-static void wrap()
+static void start()
 {
 	struct coro *co = coro_running();
 	void *ret = co->func(*(co->ppass));
 	*(co->ppass) = ret;
-	transfer(co, CORO_DEAD);
+	co->status = CORO_DEAD;
+	assert(!swapcontext(&co->context, &co->yield_to->context));
 }
 
 int coro_create(struct coro **pco, void *(*func)(void *), size_t stack_size)
@@ -87,7 +91,7 @@ int coro_create(struct coro **pco, void *(*func)(void *), size_t stack_size)
 	{
 		return CORO_CREATE_ESTACKSZ;
 	}
-	void *stack = malloc(stack_size);
+	void *stack = stackmalloc(stack_size);
 	if (!stack)
 	{
 		return CORO_CREATE_ENOMEM;
@@ -95,13 +99,13 @@ int coro_create(struct coro **pco, void *(*func)(void *), size_t stack_size)
 	struct coro *co = malloc(sizeof(struct coro));
 	if (!co)
 	{
-		free(stack);
+		stackfree(stack);
 		return CORO_CREATE_ENOMEM;
 	}
 	if (getcontext(&co->context))
 	{
 		free(co);
-		free(stack);
+		stackfree(stack);
 		return CORO_CREATE_ESYS;
 	}
 	co->udata = NULL;
@@ -109,7 +113,7 @@ int coro_create(struct coro **pco, void *(*func)(void *), size_t stack_size)
 	co->context.uc_stack.ss_sp = stack;
 	co->context.uc_stack.ss_size = stack_size;
 	co->func = func;
-	makecontext(&co->context, wrap, 0);
+	makecontext(&co->context, start, 0);
 	*pco = co;
 	return CORO_OK;
 }
@@ -124,7 +128,7 @@ int coro_free(struct coro *co)
 	{
 		return CORO_FREE_ENOTDEAD;
 	}
-	free(co->context.uc_stack.ss_sp);
+	stackfree(co->context.uc_stack.ss_sp);
 	free(co);
 	return CORO_OK;
 }
@@ -170,7 +174,8 @@ int coro_yield(void **ppass)
 		return CORO_YIELD_ETOPLVL;
 	}
 	*(co->ppass) = *ppass;
-	transfer(co, CORO_SUSPENDED);
+	co->status = CORO_SUSPENDED;
+	assert(!swapcontext(&co->context, &co->yield_to->context));
 	*ppass = *(co->ppass);
 	return CORO_OK;
 }

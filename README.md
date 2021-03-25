@@ -28,9 +28,10 @@ of context transfers
 using C++; this library will eat your exceptions and RAII for breakfast.
 
 Also don't use this if you can't guarantee that you won't overflow the stack
-you allocate for your coroutines; see the code below. It should be possible
-to handle stack overflows in some sane way, but this requires OS assistance.
-I haven't gotten around to looking into that yet; PRs are welcome.
+allocated for your coroutines; see the code below. If you can't guarantee
+this but still would like to use the library, consider building (see way below)
+with `-Duse_mmap_stack=true` to have the library ask Linux for stacks that
+reliably crash your program with a `SIGSEGV` when overflowed.
 
 ## Who (should I blame if my program dies)?
 
