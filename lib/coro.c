@@ -71,10 +71,11 @@ struct coro *coro_toplevel(void)
 static void start()
 {
 	struct coro *co = coro_running();
+	co->status = CORO_RUNNING;
 	void *ret = co->func(*(co->ppass));
 	*(co->ppass) = ret;
 	co->status = CORO_DEAD;
-	assert(!swapcontext(&co->context, &co->yield_to->context));
+	assert(!setcontext(&co->yield_to->context));
 }
 
 int coro_create(struct coro **pco, void *(*func)(void *), size_t stack_size)
@@ -147,19 +148,14 @@ int coro_resume(struct coro *co, void **ppass)
 	{
 		return CORO_RESUME_ENOTSUSP;
 	}
-	co->status = CORO_RUNNING;
 	co->ppass = ppass;
 	co->yield_to = coro_running();
 	gs.current = co;
 	co->yield_to->status = CORO_NORMAL;
-	int swap_ok = 1;
-	if (swapcontext(&co->yield_to->context, &co->context))
-	{
-		swap_ok = 0;
-	}
+	assert(!swapcontext(&co->yield_to->context, &co->context));
 	co->yield_to->status = CORO_RUNNING;
 	gs.current = co->yield_to;
-	return swap_ok ? CORO_OK : CORO_RESUME_ESYS;
+	return CORO_OK;
 }
 
 int coro_yield(void **ppass)
@@ -176,6 +172,7 @@ int coro_yield(void **ppass)
 	*(co->ppass) = *ppass;
 	co->status = CORO_SUSPENDED;
 	assert(!swapcontext(&co->context, &co->yield_to->context));
+	co->status = CORO_RUNNING;
 	*ppass = *(co->ppass);
 	return CORO_OK;
 }

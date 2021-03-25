@@ -4,16 +4,19 @@ Or: _as if we don't have enough things to worry about_
 
 ## What (is all this)?
 
-A very simple coroutine library for C (similar to
+A very simple coroutine library for C that is semantically similar to
 [Lua's](https://www.lua.org/manual/5.1/manual.html#2.11), except there's no
-GC involved so you have to clean up after yourself). Currently heavily depends
-on the [getcontext](https://linux.die.net/man/3/getcontext) family of
+GC involved so you have to free coroutines yourself, which you can only do
+if they're dead (have terminated). Currently heavily depends on the
+[getcontext](https://linux.die.net/man/3/getcontext) family of
 functions, which seem to have been phased out of POSIX, very sad.
 
-This library is not thread-safe, which shouldn't come as a surprise if you're
-trying to use it (seeing as it's a coroutine library). Regardless, you can
+This library is not thread-safe, which, seeing as it's a coroutine library,
+shouldn't come as a surprise if you're considering using it. Regardless, you can
 configure (see below) the library to make its global state `_Thread_local`
-rather than `static` if you so wish, and if your compiler supports it.
+rather than `static` if you so wish, and if your compiler supports it, to get
+safety guarantees for at least the case in which your threads talk to each other
+very little and never try to use the same coroutines.
 
 ## Why (would you do this)?
 
@@ -23,15 +26,17 @@ for C out of my system.
 ## When (should I use this)?
 
 Never, unless you're sure that the rest of your program can handle the sort
-of context transfers
-[setcontext](https://linux.die.net/man/3/getcontext) does. Especially not when
-using C++; this library will eat your exceptions and RAII for breakfast.
+of context transfers [setcontext](https://linux.die.net/man/3/getcontext) does.
+Especially not when using C++; this library will eat your exceptions for
+breakfast. There might be platform-dependent ways to solve this problem, but I
+haven't yet looked into these; PRs are welcome.
 
-Also don't use this if you can't guarantee that you won't overflow the stack
+Also don't use this if you can't guarantee that you won't overflow the stacks
 allocated for your coroutines; see the code below. If you can't guarantee
 this but still would like to use the library, consider building (see way below)
 with `-Duse_mmap_stack=true` to have the library ask Linux for stacks that
-reliably crash your program with a `SIGSEGV` when overflowed.
+immediately and reliably crash your program with a `SIGSEGV` when overflowed,
+rather than break your allocator and cause a double free two weeks later.
 
 ## Who (should I blame if my program dies)?
 

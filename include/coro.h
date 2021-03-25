@@ -28,7 +28,6 @@ int coro_free(struct coro *co);
 #define CORO_RESUME_ENULLPPASS  ( -4001)
 #define CORO_RESUME_ENULLCO     ( -4002)
 #define CORO_RESUME_ENOTSUSP    ( -4003)
-#define CORO_RESUME_ESYS        ( -4004)
 int coro_resume(struct coro *co, void **ppass);
 
 #define CORO_YIELD_ENULLPPASS   ( -5001)
