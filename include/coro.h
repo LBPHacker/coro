@@ -7,6 +7,8 @@
 
 struct coro;
 
+typedef void *(*coro_func_t)(void *);
+
 #define CORO_OK                 (     0)
 
 #define CORO_RUNNING            (  1001)
@@ -19,7 +21,7 @@ struct coro;
 #define CORO_CREATE_ESTACKSZ    ( -2003)
 #define CORO_CREATE_ENOMEM      ( -2004)
 #define CORO_CREATE_ESYS        ( -2005)
-int coro_create(struct coro **pco, void *(*func)(void *), size_t stack_size);
+int coro_create(struct coro **pco, coro_func_t func, size_t stack_size);
 
 #define CORO_FREE_ENULLCO       ( -3001)
 #define CORO_FREE_ENOTDEAD      ( -3002)

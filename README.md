@@ -133,3 +133,10 @@ You can uninstall the library with:
 ```sh
 sudo ninja uninstall
 ```
+
+Build options:
+
+| name               | type    | default | description                                                                       |
+|--------------------|---------|---------|-----------------------------------------------------------------------------------|
+| `use_thread_local` | boolean | `true`  | Make the global coro state `_Thread_local` rather than `static`                   |
+| `use_mmap_stack`   | boolean | `true`  | Allocate coro stacks with `mmap` and `MAP_GROWSDOWN` (Linux) rather than `malloc` |

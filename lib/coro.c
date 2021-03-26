@@ -19,7 +19,7 @@ struct coro
 	int status;
 	void **ppass;
 	ucontext_t context;
-	void *(*func)(void *);
+	coro_func_t func;
 	struct coro *yield_to;
 };
 
@@ -36,35 +36,20 @@ _Thread_local
 static
 #endif
 struct global_state gs = {
-	.init = 0,
+	.toplevel = {
+		.udata = NULL,
+		.status = CORO_RUNNING,
+	},
+	.current = NULL,
 };
-
-static void init_global_state(void)
-{
-	gs.init = 1;
-	gs.toplevel.udata = NULL;
-	gs.toplevel.status = CORO_RUNNING;
-	gs.toplevel.ppass = NULL;
-	gs.toplevel.func = NULL;
-	gs.toplevel.yield_to = NULL;
-	gs.current = &gs.toplevel;
-}
 
 struct coro *coro_running(void)
 {
-	if (!gs.init)
-	{
-		init_global_state();
-	}
-	return gs.current;
+	return gs.current ? gs.current : &gs.toplevel;
 }
 
 struct coro *coro_toplevel(void)
 {
-	if (!gs.init)
-	{
-		init_global_state();
-	}
 	return &gs.toplevel;
 }
 
@@ -78,7 +63,7 @@ static void start()
 	assert(!setcontext(&co->yield_to->context));
 }
 
-int coro_create(struct coro **pco, void *(*func)(void *), size_t stack_size)
+int coro_create(struct coro **pco, coro_func_t func, size_t stack_size)
 {
 	if (!pco)
 	{
