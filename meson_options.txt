@@ -7,6 +7,6 @@ option(
 option(
 	'use_mmap_stack',
 	type: 'boolean',
-	value: true,
+	value: false,
 	description: 'Allocate coro stacks with mmap and MAP_GROWSDOWN (Linux) rather than malloc'
 )

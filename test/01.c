@@ -45,7 +45,7 @@ int main(int argc, const char *argv[])
 	{
 		exit(4);
 	}
-	if (coro_create(&co, nothing, 0x1000U) != CORO_OK)
+	if (coro_create(&co, nothing, 0x10000U) != CORO_OK)
 	{
 		exit(5);
 	}

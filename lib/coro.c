@@ -6,7 +6,7 @@
 
 #if CORO_USE_MMAP_STACK
 # include <sys/mman.h>
-# define stackmalloc(a) mmap(NULL, a, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, 0, 0)
+# define stackmalloc(a) mmap(NULL, a, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0)
 # define stackfree(a) assert(!munmap(a, 1))
 #else
 # define stackmalloc(a) malloc(a)
@@ -56,10 +56,11 @@ struct coro *coro_toplevel(void)
 static void start()
 {
 	struct coro *co = coro_running();
+	void *pass = *(co->ppass);
 	co->status = CORO_RUNNING;
-	void *ret = co->func(*(co->ppass));
-	*(co->ppass) = ret;
+	pass = co->func(pass);
 	co->status = CORO_DEAD;
+	*(co->ppass) = pass;
 	assert(!setcontext(&co->yield_to->context));
 }
 

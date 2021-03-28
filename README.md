@@ -32,11 +32,12 @@ breakfast. There might be platform-dependent ways to solve this problem, but I
 haven't yet looked into these; PRs are welcome.
 
 Also don't use this if you can't guarantee that you won't overflow the stacks
-allocated for your coroutines; see the code below. If you can't guarantee
+allocated for your coroutines; see the code below. ~If you can't guarantee
 this but still would like to use the library, consider building (see way below)
 with `-Duse_mmap_stack=true` to have the library ask Linux for stacks that
 immediately and reliably crash your program with a `SIGSEGV` when overflowed,
-rather than break your allocator and cause a double free two weeks later.
+rather than break your allocator and cause a double free two weeks later.~
+[`MAP_GROWSDOWN` seems to be useless](https://stackoverflow.com/questions/56888725/why-is-map-growsdown-mapping-does-not-grow); requires further investigation.
 
 ## Who (should I blame if my program dies)?
 
@@ -136,7 +137,7 @@ sudo ninja uninstall
 
 Build options:
 
-| name               | type    | default | description                                                                       |
-|--------------------|---------|---------|-----------------------------------------------------------------------------------|
-| `use_thread_local` | boolean | `true`  | Make the global coro state `_Thread_local` rather than `static`                   |
-| `use_mmap_stack`   | boolean | `true`  | Allocate coro stacks with `mmap` and `MAP_GROWSDOWN` (Linux) rather than `malloc` |
+| name | type | default | description |
+|-|-|-|-|
+| `use_thread_local` | boolean | `true` | Make the global coro state `_Thread_local` rather than `static` |
+| `use_mmap_stack` | boolean | ~`true`~ `false` | ~Allocate coro stacks with `mmap` and `MAP_GROWSDOWN` (Linux) rather than `malloc`~ `MAP_GROWSDOWN` seems to be useless, see above |

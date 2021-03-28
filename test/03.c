@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 {
 	struct coro *co;
 	void *ret;
-	assert(!coro_create(&co, f1, 0x1000U));
+	assert(!coro_create(&co, f1, 0x10000U));
 	assert(!coro_resume(co, &ret));
 	HITCHECK(1);
 	assert(!coro_resume(co, &ret));

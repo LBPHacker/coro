@@ -44,7 +44,7 @@ static void *inc_twice(void *data)
 	}
 	intptr_t val = (intptr_t)data;
 	val += 1;
-	assert(!coro_create(&co2, inc_thrice, 0x1000U));
+	assert(!coro_create(&co2, inc_thrice, 0x10000U));
 	assert(!coro_resume(co2, (void **)&val));
 	if (coro_running() != co1)
 	{
@@ -83,7 +83,7 @@ int main(int argc, const char *argv[])
 	{
 		exit(1);
 	}
-	assert(!coro_create(&co1, inc_twice, 0x1000U));
+	assert(!coro_create(&co1, inc_twice, 0x10000U));
 	intptr_t val = 8;
 	assert(!coro_resume(co1, (void **)&val));
 	if (coro_running() != coro_toplevel())
