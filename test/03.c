@@ -1,12 +1,13 @@
 #include "coro.h"
+#include "test.h"
 
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
 
-int hit = 0;
+static int hit = 0;
 
-#define HITCHECK(k) if (hit != k) exit(k + 1); hit = k + 1;
+#define HITCHECK(k) do { EXPECT(hit == k); hit = k + 1; } while (0)
 
 static void f2()
 {
