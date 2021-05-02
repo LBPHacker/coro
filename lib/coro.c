@@ -25,7 +25,6 @@ struct coro
 
 struct global_state
 {
-	int init;
 	struct coro *current;
 	struct coro toplevel;
 };
@@ -45,6 +44,8 @@ struct global_state gs = {
 
 struct coro *coro_running(void)
 {
+	// * Can't just initialize current with &toplevel because gs might be
+	//   thread-local, in which case its address is not a compile-time constant.
 	return gs.current ? gs.current : &gs.toplevel;
 }
 
