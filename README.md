@@ -64,8 +64,8 @@ static void *cofunc(void *data)
 	struct context *pctx = (struct context *)data;
 	pctx->input *= pctx->input;
 	printf("hello from cofunc\n");
-	// * There first parameter of coro_yield is similar to the parameter to
-	//   the second parameter of coro_resume, see below.
+	// * There first parameter of coro_yield is similar to the second parameter
+	//   of coro_resume, see below.
 	assert(!coro_yield((void **)&pctx));
 	pctx->input += 42;
 	return data;
