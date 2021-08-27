@@ -6,11 +6,31 @@
 
 #if CORO_USE_MMAP_STACK
 # include <sys/mman.h>
-# define stackmalloc(a) mmap(NULL, a, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0)
-# define stackfree(a) assert(!munmap(a, 1))
+
+static void *stackmalloc(size_t size)
+{
+	void *mapped = mmap(NULL, a, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
+	if (mapped == MAP_FAILED)
+	{
+		return NULL;
+	}
+	return mapped;
+}
+
+static void stackfree(void *a)
+{
+	assert(!munmap(a, 1));
+}
 #else
-# define stackmalloc(a) malloc(a)
-# define stackfree(a) free(a)
+static void *stackmalloc(size_t size)
+{
+	return malloc(size);
+}
+
+static void stackfree(void *a)
+{
+	free(a);
+}
 #endif
 
 struct coro
@@ -67,11 +87,11 @@ static void start()
 
 int coro_create(struct coro **pco, coro_func_t func, size_t stack_size)
 {
-	if (!pco)
+	if (pco == NULL)
 	{
 		return CORO_CREATE_ENULLPCO;
 	}
-	if (!func)
+	if (func == NULL)
 	{
 		return CORO_CREATE_ENULLFN;
 	}
@@ -80,12 +100,12 @@ int coro_create(struct coro **pco, coro_func_t func, size_t stack_size)
 		return CORO_CREATE_ESTACKSZ;
 	}
 	void *stack = stackmalloc(stack_size);
-	if (!stack)
+	if (stack == NULL)
 	{
 		return CORO_CREATE_ENOMEM;
 	}
 	struct coro *co = malloc(sizeof(struct coro));
-	if (!co)
+	if (co == NULL)
 	{
 		stackfree(stack);
 		return CORO_CREATE_ENOMEM;
@@ -108,7 +128,7 @@ int coro_create(struct coro **pco, coro_func_t func, size_t stack_size)
 
 int coro_free(struct coro *co)
 {
-	if (!co)
+	if (co == NULL)
 	{
 		return CORO_FREE_ENULLCO;
 	}
@@ -123,11 +143,11 @@ int coro_free(struct coro *co)
 
 int coro_resume(struct coro *co, void **ppass)
 {
-	if (!co)
+	if (co == NULL)
 	{
 		return CORO_RESUME_ENULLCO;
 	}
-	if (!ppass)
+	if (ppass == NULL)
 	{
 		return CORO_RESUME_ENULLPPASS;
 	}
@@ -147,7 +167,7 @@ int coro_resume(struct coro *co, void **ppass)
 
 int coro_yield(void **ppass)
 {
-	if (!ppass)
+	if (ppass == NULL)
 	{
 		return CORO_YIELD_ENULLPPASS;
 	}
@@ -166,7 +186,7 @@ int coro_yield(void **ppass)
 
 int coro_status(struct coro *co)
 {
-	if (!co)
+	if (co == NULL)
 	{
 		return CORO_STATUS_ENULLCO;
 	}
@@ -175,7 +195,7 @@ int coro_status(struct coro *co)
 
 int coro_setudata(struct coro *co, void *udata)
 {
-	if (!co)
+	if (co == NULL)
 	{
 		return CORO_SETUDATA_ENULLCO;
 	}
@@ -185,11 +205,11 @@ int coro_setudata(struct coro *co, void *udata)
 
 int coro_getudata(struct coro *co, void **pudata)
 {
-	if (!co)
+	if (co == NULL)
 	{
 		return CORO_GETUDATA_ENULLCO;
 	}
-	if (!pudata)
+	if (pudata == NULL)
 	{
 		return CORO_GETUDATA_ENULLPUD;
 	}
